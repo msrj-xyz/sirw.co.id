@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![SIRW Logo](https://via.placeholder.com/200x200?text=SIRW)
+![SIRW Logo](documents/logo.png)
 
 **Digitizing Community Administration for Better Living**
 

@@ -1,10 +1,8 @@
 name: CI
 
 on:
-  push:
-    branches: [ master, feat/backend ]
-  pull_request:
-    branches: [ master ]
+  push: {}
+  pull_request: {}
 
 jobs:
   test:

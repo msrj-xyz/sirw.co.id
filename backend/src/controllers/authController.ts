@@ -68,7 +68,23 @@ export async function login(req: Request, res: Response) {
   const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) return res.status(401).json({ status: 'error', error: { message: 'Invalid credentials' } });
 
-  const accessToken = signAccessToken({ sub: user.id, email: user.email, role: user.role });
+  let accessToken = signAccessToken({ sub: user.id, email: user.email, role: user.role });
+  // include rt/rw in access token if user has a resident profile
+  try {
+    const profile = await prisma.resident.findFirst({ where: { userId: user.id }, select: { rtNumber: true, rwNumber: true } });
+    if (profile) {
+      // re-sign including rt/rw
+      const payload: any = { sub: user.id, email: user.email, role: user.role };
+      if (profile.rtNumber) payload.rtNumber = profile.rtNumber;
+      if (profile.rwNumber) payload.rwNumber = profile.rwNumber;
+      // short-lived access token
+      const accessWithScope = signAccessToken(payload);
+      // override accessToken variable to include claims
+      accessToken = accessWithScope;
+    }
+  } catch (e) {
+    // ignore profile lookup failures — token without scope is still valid
+  }
   const refreshToken = signRefreshToken({ sub: user.id, jti: uuidv4() });
 
   // store hashed refresh token
@@ -172,6 +188,17 @@ export async function socialGoogle(req: Request, res: Response) {
   if (!token) return res.status(400).json({ status: 'error', error: { message: 'token required' } });
   // Dev adapter: accept any token and return a guest user token
   const dummyUser = await prisma.user.upsert({ where: { email: `google-${token}@example.test` }, update: {}, create: { email: `google-${token}@example.test`, role: 'warga', isActive: true } });
-  const accessToken = signAccessToken({ sub: dummyUser.id, email: dummyUser.email, role: dummyUser.role });
+  let accessToken = signAccessToken({ sub: dummyUser.id, email: dummyUser.email, role: dummyUser.role });
+  try {
+    const profile = await prisma.resident.findFirst({ where: { userId: dummyUser.id }, select: { rtNumber: true, rwNumber: true } });
+    if (profile) {
+      const payload: any = { sub: dummyUser.id, email: dummyUser.email, role: dummyUser.role };
+      if (profile.rtNumber) payload.rtNumber = profile.rtNumber;
+      if (profile.rwNumber) payload.rwNumber = profile.rwNumber;
+      accessToken = signAccessToken(payload);
+    }
+  } catch (e) {
+    // ignore
+  }
   return res.json({ status: 'success', data: { access_token: accessToken, user: { id: dummyUser.id } } });
 }

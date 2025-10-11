@@ -49,6 +49,19 @@ export async function listResidents(req: Request, res: Response) {
 
   // build where
   const where: Record<string, unknown> = { deletedAt: null };
+  // enforce RT/RW scoping for admin roles if actor is admin_rt or admin_rw
+  try {
+    if (actor.role === 'admin_rt' || actor.role === 'admin_rw') {
+      // try to find the admin's resident profile to determine their RT/RW
+      const adminRes = await prisma.resident.findFirst({ where: { userId: actor.sub }, select: { rtNumber: true, rwNumber: true } });
+      if (adminRes) {
+        if (actor.role === 'admin_rt') where.rtNumber = adminRes.rtNumber;
+        if (actor.role === 'admin_rw') where.rwNumber = adminRes.rwNumber;
+      }
+    }
+  } catch (e) {
+    // ignore and proceed without additional scoping
+  }
   // filters are sent as filter[rt_number], filter[rw_number], filter[residence_status], filter[is_active]
   if (req.query['filter[rt_number]']) where.rtNumber = String(req.query['filter[rt_number]']);
   if (req.query['filter[rw_number]']) where.rwNumber = String(req.query['filter[rw_number]']);
@@ -106,12 +119,22 @@ export async function updateResident(req: Request, res: Response) {
   const data = pick(req.body, allowed);
   // authorization: only super_admin or owner (userId) can update
   const actor = (req as unknown as { user?: UserPayload }).user;
-  const target = await prisma.resident.findUnique({ where: { id }, select: { userId: true } });
+  const target = await prisma.resident.findUnique({ where: { id }, select: { userId: true, rtNumber: true, rwNumber: true } });
   if (!actor) return res.status(401).json({ status: 'error', error: { message: 'Unauthorized' } });
   // If resident has an owner, only that owner or super_admin can modify.
   // If resident has no owner, only super_admin can modify.
   const isOwner = !!target?.userId && actor.sub === target?.userId;
-  if (actor.role !== 'super_admin' && !isOwner) {
+  // super_admin always allowed
+  if (actor.role === 'super_admin' || isOwner) {
+    // allowed
+  } else if (actor.role === 'admin_rt') {
+    // admin_rt allowed only if they belong to same RT as target
+    const adminRes = await prisma.resident.findFirst({ where: { userId: actor.sub }, select: { rtNumber: true } });
+    if (!adminRes || adminRes.rtNumber !== target?.rtNumber) return res.status(403).json({ status: 'error', error: { message: 'Forbidden' } });
+  } else if (actor.role === 'admin_rw') {
+    const adminRes = await prisma.resident.findFirst({ where: { userId: actor.sub }, select: { rwNumber: true } });
+    if (!adminRes || adminRes.rwNumber !== target?.rwNumber) return res.status(403).json({ status: 'error', error: { message: 'Forbidden' } });
+  } else {
     return res.status(403).json({ status: 'error', error: { message: 'Forbidden' } });
   }
   try {
@@ -127,10 +150,18 @@ export async function updateResident(req: Request, res: Response) {
 export async function deleteResident(req: Request, res: Response) {
   const id = req.params.id;
   const actor = (req as unknown as { user?: UserPayload }).user;
-  const target = await prisma.resident.findUnique({ where: { id }, select: { userId: true } });
+  const target = await prisma.resident.findUnique({ where: { id }, select: { userId: true, rtNumber: true, rwNumber: true } });
   if (!actor) return res.status(401).json({ status: 'error', error: { message: 'Unauthorized' } });
   const isOwnerDel = !!target?.userId && actor.sub === target?.userId;
-  if (actor.role !== 'super_admin' && !isOwnerDel) {
+  if (actor.role === 'super_admin' || isOwnerDel) {
+    // allowed
+  } else if (actor.role === 'admin_rt') {
+    const adminRes = await prisma.resident.findFirst({ where: { userId: actor.sub }, select: { rtNumber: true } });
+    if (!adminRes || adminRes.rtNumber !== target?.rtNumber) return res.status(403).json({ status: 'error', error: { message: 'Forbidden' } });
+  } else if (actor.role === 'admin_rw') {
+    const adminRes = await prisma.resident.findFirst({ where: { userId: actor.sub }, select: { rwNumber: true } });
+    if (!adminRes || adminRes.rwNumber !== target?.rwNumber) return res.status(403).json({ status: 'error', error: { message: 'Forbidden' } });
+  } else {
     return res.status(403).json({ status: 'error', error: { message: 'Forbidden' } });
   }
   try {

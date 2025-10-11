@@ -74,6 +74,14 @@ jobs:
         working-directory: backend
         run: npx prisma generate
 
+      - name: Reset test database (CI only)
+        run: |
+          echo "Dropping and recreating test database"
+          PGPASSWORD=akatsuki2912 psql -h localhost -U sirw -c "REVOKE CONNECT ON DATABASE sirw_db FROM public;" || true
+          PGPASSWORD=akatsuki2912 psql -h localhost -U sirw -c "DROP DATABASE IF EXISTS sirw_db;" || true
+          PGPASSWORD=akatsuki2912 psql -h localhost -U sirw -c "CREATE DATABASE sirw_db;" || true
+        shell: bash
+
       - name: Run migrations (deploy)
         working-directory: backend
         run: npx prisma migrate deploy

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import residentsImportQueue from '../queue/index';
 import multer from 'multer';
 import { createResident, listResidents, getResident, updateResident, deleteResident, importPreview } from '../controllers/residentsController';
 import validate from '../middleware/validate';
@@ -27,7 +28,7 @@ router.post('/import', requireAuth, upload.single('file'), async (req, res) => {
   // persist uploaded file to tmp (already saved by multer at dest)
   interface ReqWithUser { user?: { sub?: string } }
   const userPayload = (req as unknown as ReqWithUser).user;
-  const job = await import('../queue/index').then(({ residentsImportQueue }) => residentsImportQueue.add({ filePath: file.path, originalName: file.originalname, initiatedBy: userPayload?.sub }));
+  const job = await residentsImportQueue.add({ filePath: file.path, originalName: file.originalname, initiatedBy: userPayload?.sub });
   // in test environment the queue stub may include result; return it for assertions
   type JobShape = { id?: string | number; result?: unknown } | { id: string | number };
   const jobObj = job as JobShape;

@@ -93,3 +93,6 @@ temp/
 
 # Keep examples in repo
 !.env.example
+
+# Ensure backend/src/lib logger is tracked (we intentionally keep library code under src/lib)
+!backend/src/lib/logger.ts

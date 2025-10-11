@@ -3,6 +3,7 @@
     "node": true,
     "es2022": true
   },
+  "ignorePatterns": ["tests/**", "prisma/**", "jest.config.ts", "prisma/seed.ts"],
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "project": "./tsconfig.json"

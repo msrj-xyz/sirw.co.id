@@ -57,6 +57,9 @@ jest/__tests__/
 .env.production.local
 env.local
 
+# GCS service account key (local/production key)
+production-474702-53cc19b4173b.json
+
 # Docker
 docker-compose.override.yml
 docker-compose.local.yml

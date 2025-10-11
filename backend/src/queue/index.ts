@@ -1,0 +1,39 @@
+import Queue from 'bull';
+import { REDIS_URL } from '../config';
+
+// In test environment avoid connecting to a real Redis/Bull instance.
+// Provide a minimal stub implementing the methods used by the worker and routes.
+class QueueStub {
+	private handlers: any[] = [];
+	async add(data: any) {
+		const id = `${Date.now()}`;
+		const job: any = { id, data, progress: async (_n: number) => { /* noop */ } };
+		// if a handler was registered via process(), invoke it
+		if (this.handlers.length > 0) {
+			try {
+				const handler = this.handlers[0];
+				// call handler asynchronously but wait for completion before returning
+				const result = await handler(job);
+				return { id, result };
+			} catch (e) {
+				return { id, error: String(e) };
+			}
+		}
+		return { id };
+	}
+	process(handler: any) {
+		this.handlers.push(handler);
+		return undefined;
+	}
+	on() { /* noop */ }
+	async close() { /* noop */ }
+}
+
+// use a single queue for residents import
+export const residentsImportQueue = (process.env.NODE_ENV === 'test')
+	? new (QueueStub as any)()
+	: REDIS_URL
+		? new Queue('residents:import', REDIS_URL)
+		: new Queue('residents:import');
+
+export default residentsImportQueue;

@@ -1,0 +1,42 @@
+import { z } from 'zod';
+
+export const residentCreateSchema = z.object({
+  nik: z.string().regex(/^\d{16}$/),
+  kkNumber: z.string().optional(),
+  fullName: z.string().min(1),
+  birthDate: z.string().optional(),
+  birthPlace: z.string().optional(),
+  gender: z.enum(['M', 'F']).optional(),
+  religion: z.string().optional(),
+  bloodType: z.string().optional(),
+  maritalStatus: z.string().optional(),
+  nationality: z.string().optional(),
+  email: z.string().email().optional(),
+  phone: z.string().optional(),
+  occupation: z.string().optional(),
+  education: z.string().optional(),
+  monthlyIncome: z.string().optional(),
+  rtNumber: z.string().min(1),
+  rwNumber: z.string().min(1),
+  address: z.string().min(1),
+  postalCode: z.string().optional(),
+  residenceStatus: z.enum(['owner', 'tenant', 'boarding']),
+  moveInDate: z.string().optional(),
+  moveOutDate: z.string().optional(),
+  isActive: z.boolean().optional(),
+  isKkHead: z.boolean().optional(),
+  userId: z.string().uuid().optional(),
+});
+
+export const residentUpdateSchema = z.object({
+  fullName: z.string().min(1).optional(),
+  rtNumber: z.string().optional(),
+  rwNumber: z.string().optional(),
+  address: z.string().optional(),
+  email: z.string().email().optional(),
+  phone: z.string().optional(),
+  occupation: z.string().optional(),
+  education: z.string().optional(),
+  residenceStatus: z.enum(['owner', 'tenant', 'boarding']).optional(),
+  isActive: z.boolean().optional(),
+});

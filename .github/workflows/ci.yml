@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, feat/backend ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: sirw
+          POSTGRES_PASSWORD: akatsuki2912
+          POSTGRES_DB: sirw_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sirw -d sirw_db" 
+          --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping || exit 1"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://sirw:akatsuki2912@localhost:5432/sirw_db?schema=public
+      REDIS_URL: redis://localhost:6379
+      # Optional (for GCS integration tests): set these secrets in your repo settings
+      GCS_BUCKET: ${{ secrets.GCS_BUCKET }}
+      # If you add a secret named GCP_KEY containing the full JSON service account, the job
+      # will write it to backend/production-474702-53cc19b4173b.json so tests can access it.
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Cache node modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            backend/node_modules
+            ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('backend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Write GCP key (optional)
+        if: ${{ secrets.GCP_KEY != '' }}
+        run: |
+          echo 'Writing GCP key to backend/production-474702-53cc19b4173b.json'
+          mkdir -p backend
+          printf "%s" "${{ secrets.GCP_KEY }}" > backend/production-474702-53cc19b4173b.json
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Prisma generate
+        working-directory: backend
+        run: npx prisma generate
+
+      - name: Run migrations (deploy)
+        working-directory: backend
+        run: npx prisma migrate deploy
+
+      - name: Lint
+        working-directory: backend
+        run: npm run lint
+
+      - name: Build
+        working-directory: backend
+        run: npm run build
+
+      - name: Run tests
+        working-directory: backend
+        env:
+          # ensure test runner can access services
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          REDIS_URL: ${{ env.REDIS_URL }}
+          GCS_BUCKET: ${{ env.GCS_BUCKET }}
+          GCS_KEYFILE: ./production-474702-53cc19b4173b.json
+        run: npm test -- --runInBand --detectOpenHandles --globalTeardown=./src/jest.globalTeardown.ts

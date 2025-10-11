@@ -7,17 +7,51 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Gender {
+  M
+  F
+}
+
+enum ResidenceStatus {
+  owner
+  tenant
+  boarding
+}
+
 model User {
-  id            String   @id @default(uuid())
-  email         String?  @unique
-  phone         String?  @unique
-  passwordHash  String?
-  role          String   @default("warga")
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  residents     Resident[]
-  refreshTokens RefreshToken[]
+  id                 String   @id @default(uuid())
+  email              String?  @unique
+  phone              String?  @unique
+  passwordHash       String?
+  role               String   @default("warga")
+
+  // Status flags
+  isActive           Boolean  @default(false)
+  emailVerified      Boolean  @default(false)
+  phoneVerified      Boolean  @default(false)
+  isApproved         Boolean  @default(false)
+
+  // 2FA
+  twoFactorEnabled   Boolean  @default(false)
+  twoFactorSecret    String?
+
+  // OAuth
+  oauthProvider      String?
+  oauthProviderId    String?
+
+  // Session tracking
+  lastLoginAt        DateTime?
+  lastLoginIp        String?
+  failedLoginAttempts Int     @default(0)
+  lockedUntil        DateTime?
+
+  // Soft delete & timestamps
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  deletedAt          DateTime?
+
+  residents          Resident[]
+  refreshTokens      RefreshToken[]
 }
 
 model RefreshToken {
@@ -25,21 +59,60 @@ model RefreshToken {
   user       User     @relation(fields: [userId], references: [id])
   userId     String
   tokenHash  String   @unique
+  deviceInfo Json?
+  ipAddress  String?
   expiresAt  DateTime
   revokedAt  DateTime?
   createdAt  DateTime @default(now())
 }
 
 model Resident {
-  id         String   @id @default(uuid())
-  user       User?    @relation(fields: [userId], references: [id])
-  userId     String?
-  nik        String   @unique
-  fullName   String
-  rtNumber   String
-  rwNumber   String
-  address    String
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id             String          @id @default(uuid())
+  user           User?           @relation(fields: [userId], references: [id])
+  userId         String?
+  nik            String          @unique
+  kkNumber       String?
+  fullName       String
+
+  // Personal
+  birthDate      DateTime?
+  birthPlace     String?
+  gender         Gender?
+  religion       String?
+  bloodType      String?
+  maritalStatus  String?
+  nationality    String          @default("Indonesia")
+
+  // Contact
+  email          String?
+  phone          String?
+
+  // Professional
+  occupation     String?
+  education      String?
+  monthlyIncome  Decimal?
+
+  // Residence
+  rtNumber       String
+  rwNumber       String
+  address        String
+  postalCode     String?
+  residenceStatus ResidenceStatus
+
+  // Dates
+  moveInDate     DateTime?
+  moveOutDate    DateTime?
+
+  // Status
+  isActive       Boolean         @default(true)
+  isKkHead       Boolean         @default(false)
+
+  // Timestamps
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+
+  @@index([rtNumber, rwNumber], name: "idx_residents_rt_rw")
+  @@index([fullName], name: "idx_residents_full_name")
+  @@index([isActive], name: "idx_residents_is_active")
 }

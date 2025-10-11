@@ -272,8 +272,15 @@ API_VERSION=v1
 # Database
 DATABASE_URL="postgresql://user:password@localhost:5432/sirw_dev"
 
-# Redis
+# Redis (if your Redis requires auth either include password in URL or set REDIS_PASSWORD)
+# Example without auth:
 REDIS_URL="redis://localhost:6379"
+# Example with auth (preferred):
+# REDIS_URL="redis://:your_redis_password@localhost:6379"
+# or set separately in backend .env:
+# REDIS_HOST=localhost
+# REDIS_PORT=6379
+# REDIS_PASSWORD=your_redis_password
 
 # JWT
 JWT_SECRET="your-super-secret-jwt-key-change-this"

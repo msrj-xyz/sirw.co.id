@@ -74,7 +74,7 @@ export async function login(req: Request, res: Response) {
     const profile = await prisma.resident.findFirst({ where: { userId: user.id }, select: { rtNumber: true, rwNumber: true } });
     if (profile) {
       // re-sign including rt/rw
-      const payload: any = { sub: user.id, email: user.email, role: user.role };
+  const payload: { sub: string; email?: string | null; role: string; rtNumber?: string; rwNumber?: string } = { sub: user.id, email: user.email, role: user.role };
       if (profile.rtNumber) payload.rtNumber = profile.rtNumber;
       if (profile.rwNumber) payload.rwNumber = profile.rwNumber;
       // short-lived access token

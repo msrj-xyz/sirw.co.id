@@ -3,7 +3,6 @@ import path from 'path';
 import { parse } from 'csv-parse';
 import prisma from '../prisma/client';
 import { residentsImportQueue } from './index';
-import type { Prisma } from '@prisma/client';
 // Use generated Prisma types for strict typing of create inputs and enums when available
 import { log } from '../lib/logger';
 import getRedisClient from '../services/redisClient';
@@ -23,6 +22,7 @@ export async function processImportFile(filePath: string, opts?: { jobId?: strin
   });
   const parser = fileStream.pipe(parse({ columns: true, skip_empty_lines: true, trim: true }));
   // parser can emit errors as well; ensure we log them to avoid uncaught exceptions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (parser as any).on('error', (e: unknown) => {
     log.error('CSV parser emitted error in processImportFile', e instanceof Error ? e.message : String(e));
   });

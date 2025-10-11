@@ -4,16 +4,16 @@ import { REDIS_URL } from '../config';
 // In test environment avoid connecting to a real Redis/Bull instance.
 // Provide a minimal stub implementing the methods used by the worker and routes.
 class QueueStub {
-	private handlers: any[] = [];
-	async add(data: any) {
+	private handlers: Array<(job: { id: string; data: Record<string, unknown>; progress: (n: number) => void | Promise<void> }) => Promise<unknown> | unknown> = [];
+	async add(data: Record<string, unknown>) {
 		const id = `${Date.now()}`;
-		const job: any = { id, data, progress: async (_n: number) => { /* noop */ } };
+		const job = { id, data, progress: async (_n: number) => { /* noop */ } };
 		// if a handler was registered via process(), invoke it
 		if (this.handlers.length > 0) {
 			try {
 				const handler = this.handlers[0];
 				// call handler asynchronously but wait for completion before returning
-				const result = await handler(job);
+				const result = await handler(job as any);
 				return { id, result };
 			} catch (e) {
 				return { id, error: String(e) };
@@ -21,8 +21,8 @@ class QueueStub {
 		}
 		return { id };
 	}
-	process(handler: any) {
-		this.handlers.push(handler);
+	process(handler: (job: { id: string; data: Record<string, unknown>; progress?: (n: number) => void | Promise<void> }) => Promise<unknown> | unknown) {
+		this.handlers.push(handler as any);
 		return undefined;
 	}
 	on() { /* noop */ }

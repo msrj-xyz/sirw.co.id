@@ -192,7 +192,7 @@ export async function socialGoogle(req: Request, res: Response) {
   try {
     const profile = await prisma.resident.findFirst({ where: { userId: dummyUser.id }, select: { rtNumber: true, rwNumber: true } });
     if (profile) {
-      const payload: any = { sub: dummyUser.id, email: dummyUser.email, role: dummyUser.role };
+      const payload: { sub: string; email?: string | null; role: string; rtNumber?: string; rwNumber?: string } = { sub: dummyUser.id, email: dummyUser.email, role: dummyUser.role };
       if (profile.rtNumber) payload.rtNumber = profile.rtNumber;
       if (profile.rwNumber) payload.rwNumber = profile.rwNumber;
       accessToken = signAccessToken(payload);

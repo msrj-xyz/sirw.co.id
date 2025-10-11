@@ -5,9 +5,9 @@ import { REDIS_URL } from '../config';
 // Provide a minimal stub implementing the methods used by the worker and routes.
 class QueueStub {
 	private handlers: Array<(job: { id: string; data: Record<string, unknown>; progress: (n: number) => void | Promise<void> }) => Promise<unknown> | unknown> = [];
-	async add(data: Record<string, unknown>) {
-		const id = `${Date.now()}`;
-		const job = { id, data, progress: async (_n: number) => { /* noop */ } };
+		async add(data: Record<string, unknown>) {
+			const id = `${Date.now()}`;
+			const job = { id, data, progress: async (_n?: number) => { /* noop */ } };
 		// if a handler was registered via process(), invoke it
 		if (this.handlers.length > 0) {
 			try {
@@ -21,10 +21,10 @@ class QueueStub {
 		}
 		return { id };
 	}
-	process(handler: (job: { id: string; data: Record<string, unknown>; progress?: (n: number) => void | Promise<void> }) => Promise<unknown> | unknown) {
-		this.handlers.push(handler as any);
-		return undefined;
-	}
+		process(handler: (job: { id: string; data: Record<string, unknown>; progress?: (n?: number) => void | Promise<void> }) => Promise<unknown> | unknown) {
+			this.handlers.push(handler as any);
+			return undefined;
+		}
 	on() { /* noop */ }
 	async close() { /* noop */ }
 }

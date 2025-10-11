@@ -147,13 +147,13 @@ export async function processImportFile(filePath: string, opts?: { jobId?: strin
 }
 
 // wire the queue to use the above helper so the queue behavior is unchanged
-residentsImportQueue.process(async (job: any) => {
+residentsImportQueue.process(async (job: { id: string | number; data: ImportJobData; progress?: (n: number) => void | Promise<void> }) => {
   const data = job.data as ImportJobData;
-  return processImportFile(data.filePath, { jobId: job.id, progress: job.progress?.bind(job) });
+  return processImportFile(data.filePath, { jobId: job.id as string | number, progress: job.progress?.bind(job) });
 });
 
 // handle queue errors
-residentsImportQueue.on('error', (err: any) => {
+residentsImportQueue.on('error', (err: Error) => {
   log.error('Residents import queue error', err instanceof Error ? err.message : String(err));
 });
 

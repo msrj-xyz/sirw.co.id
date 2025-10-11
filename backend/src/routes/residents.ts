@@ -29,7 +29,7 @@ router.post('/import', requireAuth, upload.single('file'), async (req, res) => {
   const userPayload = (req as unknown as ReqWithUser).user;
   const job = await import('../queue/index').then(({ residentsImportQueue }) => residentsImportQueue.add({ filePath: file.path, originalName: file.originalname, initiatedBy: userPayload?.sub }));
   // in test environment the queue stub may include result; return it for assertions
-  const resp: any = { jobId: job.id };
+  const resp: { jobId: string; result?: unknown } = { jobId: String((job as any).id) };
   if (process.env.NODE_ENV === 'test' && (job as any).result) resp.result = (job as any).result;
   return res.status(202).json({ status: 'success', data: resp });
 });

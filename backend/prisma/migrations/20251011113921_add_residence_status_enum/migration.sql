@@ -26,4 +26,5 @@ CREATE INDEX "idx_residents_rt_rw" ON "Resident"("rtNumber", "rwNumber");
 CREATE INDEX "idx_residents_full_name" ON "Resident"("fullName");
 
 -- CreateIndex
-CREATE INDEX "idx_residents_is_active" ON "Resident"("isActive");
+-- Use IF NOT EXISTS and keep same filtered index to avoid duplicate-name errors
+CREATE INDEX IF NOT EXISTS "idx_residents_is_active" ON "Resident"("isActive") WHERE "deletedAt" IS NULL;

@@ -22,8 +22,9 @@ export async function processImportFile(filePath: string, opts?: { jobId?: strin
   });
   const parser = fileStream.pipe(parse({ columns: true, skip_empty_lines: true, trim: true }));
   // parser can emit errors as well; ensure we log them to avoid uncaught exceptions
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (parser as any).on('error', (e: unknown) => {
+  // csv-parse returns a stream-like object with 'on' — use a loose type here without any
+  const parserAny = parser as unknown as { on: (ev: string, cb: (e: unknown) => void) => void };
+  parserAny.on('error', (e: unknown) => {
     log.error('CSV parser emitted error in processImportFile', e instanceof Error ? e.message : String(e));
   });
 
@@ -49,8 +50,9 @@ export async function processImportFile(filePath: string, opts?: { jobId?: strin
       // keep the minimal required fields for ResidentCreateInput
       // import type dynamically from @prisma/client via type import
       // sanitize and coerce values
-      const candidateResidence = String(mapped.residenceStatus ?? 'owner');
-      const residenceStatus = (['owner', 'tenant', 'boarding'].includes(candidateResidence) ? (candidateResidence as any) : ('owner' as any));
+  const candidateResidence = String(mapped.residenceStatus ?? 'owner');
+  type ResidenceUnion = 'owner' | 'tenant' | 'boarding';
+  const residenceStatus = (['owner', 'tenant', 'boarding'].includes(candidateResidence) ? (candidateResidence as ResidenceUnion) : ('owner' as ResidenceUnion));
 
       // local minimal typing for create input to avoid fragile imports of generated types
       interface LocalResidentCreateInput {
@@ -83,9 +85,9 @@ export async function processImportFile(filePath: string, opts?: { jobId?: strin
         phone: mapped.phone ? String(mapped.phone) : undefined,
       };
 
-  // Prisma generated types are finicky to import in this module; use a narrow, scoped any here
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await prisma.resident.create({ data: createInput as any });
+  // Use Prisma client to create the record. We keep createInput structurally compatible.
+  const createArgs = { data: createInput } as Parameters<typeof prisma.resident.create>[0];
+  await prisma.resident.create(createArgs);
     } catch (err) {
       failedRows.push({ record, error: err instanceof Error ? err.message : String(err) });
     }
@@ -147,9 +149,11 @@ export async function processImportFile(filePath: string, opts?: { jobId?: strin
 }
 
 // wire the queue to use the above helper so the queue behavior is unchanged
-residentsImportQueue.process(async (job: { id: string | number; data: ImportJobData; progress?: (n: number) => void | Promise<void> }) => {
+residentsImportQueue.process(async (job: { id: string | number; data: Record<string, unknown>; progress?: (n: number) => void | Promise<void> }) => {
   const data = job.data as ImportJobData;
-  return processImportFile(data.filePath, { jobId: job.id as string | number, progress: job.progress?.bind(job) });
+  // execute processing and ignore returned payload (queue expects void return or Promise<void>)
+  await processImportFile(String(data.filePath), { jobId: job.id as string | number, progress: job.progress?.bind(job) });
+  return;
 });
 
 // handle queue errors

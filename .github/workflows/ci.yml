@@ -58,12 +58,13 @@ jobs:
 
       - name: Write GCP key (optional)
         run: |
-          if [ -n "${{ secrets.GCP_KEY }}" ]; then
+          if [ -z "${{ secrets.GCP_KEY }}" ]; then
+            echo 'No GCP_KEY secret set; skipping GCP key write'
+          else
             echo 'Writing GCP key to backend/production-474702-53cc19b4173b.json'
             mkdir -p backend
-            printf "%s" "${{ secrets.GCP_KEY }}" > backend/production-474702-53cc19b4173b.json
-          else
-            echo 'No GCP_KEY secret set; skipping GCP key write'
+            # Use quoted cat/echo to safely write multiline JSON
+            printf '%s' "${{ secrets.GCP_KEY }}" > backend/production-474702-53cc19b4173b.json
           fi
 
       - name: Install dependencies
@@ -77,9 +78,10 @@ jobs:
       - name: Reset test database (CI only)
         run: |
           echo "Dropping and recreating test database"
-          PGPASSWORD=akatsuki2912 psql -h localhost -U sirw -c "REVOKE CONNECT ON DATABASE sirw_db FROM public;" || true
-          PGPASSWORD=akatsuki2912 psql -h localhost -U sirw -c "DROP DATABASE IF EXISTS sirw_db;" || true
-          PGPASSWORD=akatsuki2912 psql -h localhost -U sirw -c "CREATE DATABASE sirw_db;" || true
+          export PGPASSWORD=akatsuki2912
+          # Connect to the 'postgres' maintenance DB to manage databases
+          psql -h localhost -U sirw -d postgres -c "DROP DATABASE IF EXISTS sirw_db;" || true
+          psql -h localhost -U sirw -d postgres -c "CREATE DATABASE sirw_db;" || true
         shell: bash
 
       - name: Run migrations (deploy)

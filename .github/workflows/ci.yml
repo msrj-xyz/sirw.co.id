@@ -57,11 +57,14 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: Write GCP key (optional)
-        if: ${{ secrets.GCP_KEY != '' }}
         run: |
-          echo 'Writing GCP key to backend/production-474702-53cc19b4173b.json'
-          mkdir -p backend
-          printf "%s" "${{ secrets.GCP_KEY }}" > backend/production-474702-53cc19b4173b.json
+          if [ -n "${{ secrets.GCP_KEY }}" ]; then
+            echo 'Writing GCP key to backend/production-474702-53cc19b4173b.json'
+            mkdir -p backend
+            printf "%s" "${{ secrets.GCP_KEY }}" > backend/production-474702-53cc19b4173b.json
+          else
+            echo 'No GCP_KEY secret set; skipping GCP key write'
+          fi
 
       - name: Install dependencies
         working-directory: backend
